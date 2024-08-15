@@ -92,30 +92,6 @@ def lstmtrain(num_epochs,seq,optimizer,criterion,input,target,lss,k, return_dict
 def nse(predictions, targets) :
     return (1 - (((predictions - targets) ** 2) / ((targets - np.mean (targets)) ** 2)))
 
-def movingav(o,window_size,inputvar2,tau_max):
-    arr = o
-    # Initialize an empty list to store moving averages
-    mov = np.empty ((len (o) - window_size + 1, 1))
-    # Loop through the array t o
-    # consider every window of size 3
-    for dt in range (len (inputvar2[0]) * tau_max + 1) :
-        i = 0
-        moving_averages = []
-        while i < len (arr[:, dt]) - window_size + 1 :
-            # Calculate the average of current window
-            window_average = (np.sum (arr[i :i + window_size, dt]) / window_size)
-            # Store the average of current
-            # window in moving average list
-            moving_averages.append (window_average)
-            # Shift window to right by one position
-            i += 1
-        moving_averages = np.array (moving_averages).reshape ((len (moving_averages), 1))
-        mov = np.hstack ((mov, moving_averages))
-    o1 = mov[:, 1 :]
-    for i in range (len (inputvar2[0])) :
-        o1 = np.hstack ((o1, (o1[:, tau_max * (i + 1)] - o1[:, tau_max * (i + 1) - 1]).reshape (len (o1), 1)))
-
-    return o1,o1[:,0].reshape((len(o1),1))
 
 def mutualinfo(X,i):
     # kde of x1,x2 and joint x1,x2
