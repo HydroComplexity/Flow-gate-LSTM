@@ -31,8 +31,8 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
         self.linear_gate_r2 = nn.Linear (self.hidden_length, self.hidden_length, bias=False).to (device)
         self.linear_gate_l2 = nn.Linear (self.hidden_length, self.hidden_length, bias=False).to (device)
         self.linear_gate_d2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # dilution gate 1 because using only gradient
-        self.linear_gate_c2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # target chemical gradient gate
-        self.linear_gate_flux2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # target flux grad gate
+        # self.linear_gate_c2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # target chemical gradient gate
+        # self.linear_gate_flux2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # target flux grad gate
         self.sigmoid_gate = nn.Sigmoid ().to (device)
 
         self.linear_gate_w3 = nn.Linear (self.input_length, self.hidden_length, bias=False).to (device)
@@ -62,59 +62,15 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
     def input_gate(self, x, h, c) :
         h_temp = self.linear_gate_r2 (h)
         c_temp = self.linear_gate_l2 (c)
+        x_temp = self.linear_gate_w2 (x)
 
-        if self.grad == 'no' :
-            idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
-            y = torch.take (x, torch.tensor(np.array (idx)).to(self.device))
-            y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
-            x_temp = self.linear_gate_w2 (y)
-        else :
-            x_temp = self.linear_gate_w2 (x)
-
-        if self.mgate == 'regLSTM' and self.cgate=='no' and self.fluxgate=='no':
+        if self.mgate == 'regLSTM':
             return self.sigmoid_gate (x_temp + h_temp + c_temp)
-        if self.mgate == 'mLSTM(tanh)' and self.cgate=='no' and self.fluxgate=='no':
+        if self.mgate == 'mLSTM(tanh)':
             ior = self.sigmoid_gate (x_temp + h_temp + c_temp)  # changed original sig
 
             d = self.linear_gate_d2 ((torch.reshape (x[0][len(self.inputvar)], (1, 1))))
             icr = ior + self.activation_gate (d)  # + self.activation_gate(d1)# original tanh
-            return icr
-
-        if self.cgate=='yes' and self.mgate == 'mLSTM(tanh)' and self.fluxgate=='no':
-            ior = self.sigmoid_gate (x_temp + h_temp + c_temp)  # changed original sig
-            d = self.linear_gate_d2 ((torch.reshape (x[0][len (self.inputvar)], (1, 1))))
-            cg = self.linear_gate_c2 ((torch.reshape (x[0][len(self.inputvar)+1], (1, 1))))
-            icr = ior + self.activation_gate (d) +self.activation_gate(cg) # + self.activation_gate(d1)# original tanh
-            return icr
-        if self.cgate=='yes' and self.mgate == 'regLSTM' and self.fluxgate=='no':
-            ior = self.sigmoid_gate (x_temp + h_temp + c_temp)
-            cg = self.linear_gate_c2 ((torch.reshape (x[0][len (self.inputvar) + 1], (1, 1))))
-            icr = ior + self.activation_gate (cg)  # + self.activation_gate(d1)# original tanh
-            return icr
-
-        if self.cgate=='yes' and self.mgate == 'regLSTM' and self.fluxgate=='yes':
-            ior = self.sigmoid_gate (x_temp + h_temp + c_temp)
-            cg = self.linear_gate_c2 ((torch.reshape (x[0][len (self.inputvar) + 1], (1, 1))))
-            fg = self.linear_gate_flux2 ((torch.reshape (x[0][len (self.inputvar) + 2], (1, 1))))
-            icr = ior + self.activation_gate (cg) + self.activation_gate(fg)
-            return icr
-        if self.cgate=='yes' and self.mgate == 'mLSTM(tanh)' and self.fluxgate=='yes':
-            ior = self.sigmoid_gate (x_temp + h_temp + c_temp)
-            d = self.linear_gate_d2 ((torch.reshape (x[0][len (self.inputvar)], (1, 1))))
-            cg = self.linear_gate_c2 ((torch.reshape (x[0][len (self.inputvar) + 1], (1, 1))))
-            fg = self.linear_gate_flux2 ((torch.reshape (x[0][len (self.inputvar) + 2], (1, 1))))
-            icr = ior + self.activation_gate (d) + self.activation_gate(cg) + self.activation_gate(fg)
-            return icr
-        if self.cgate=='no' and self.mgate == 'mLSTM(tanh)' and self.fluxgate=='yes':
-            ior = self.sigmoid_gate (x_temp + h_temp + c_temp)
-            d = self.linear_gate_d2 ((torch.reshape (x[0][len (self.inputvar)], (1, 1))))
-            fg = self.linear_gate_flux2 ((torch.reshape (x[0][len (self.inputvar) + 2], (1, 1))))
-            icr = ior + self.activation_gate (d) + self.activation_gate(fg)
-            return icr
-        if self.cgate=='no' and self.mgate == 'regLSTM' and self.fluxgate=='yes':
-            ior = self.sigmoid_gate (x_temp + h_temp + c_temp)
-            fg = self.linear_gate_flux2 ((torch.reshape (x[0][len (self.inputvar)+2], (1, 1))))
-            icr = ior + self.activation_gate (fg)
             return icr
 
     def cell_memory_gate(self, i, f, x, h, c_prev) :
@@ -158,7 +114,7 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
 
 class Sequence (nn.Module) :
 
-    def __init__(self,input_size, hidden_size, seq_length, num_classes, mgate, cgate, fluxgate,grad,inputvar,nk, stshy=0,LSTM=True, custom=True, device='cuda', ) :
+    def __init__(self,input_size, hidden_size, seq_length, num_classes, mgate,inputvar,nk, stshy=0,LSTM=True, custom=True, device='cuda', ) :
         super (Sequence, self).__init__ ()
         self.LSTM = LSTM
         self.device = device
@@ -171,13 +127,13 @@ class Sequence (nn.Module) :
         if LSTM :
             if custom :
                 print ("modified LSTM cell implementation...")
-                self.rnn1 = LSTM_cell_flow_gate (input_size, hidden_size, num_classes, stshy, device, mgate, cgate, fluxgate,grad,inputvar).to (device)  # inputlenth and hidden size
+                self.rnn1 = LSTM_cell_flow_gate (input_size, hidden_size, num_classes, stshy, device, mgate,inputvar).to (device)  # inputlenth and hidden size
             else :
                 print ("Official PyTorch LSTM cell implementation...")
                 self.rnn1 = nn.LSTMCell (seq_length, hidden_size).to (device)
         self.linear = nn.Linear (hidden_size, num_classes).to (device)
 
-    def forward(self, input, future=0) :  #Q, tar, dependent vari, radQ, gradC
+    def forward(self, input, future=0) :  
         outputs = torch.ones (1, self.num_classes, device=self.device)  # number of class is input var
         h_t = torch.zeros (1, self.hidden_size, dtype=torch.float,device=self.device)  # data x hiddenzsize (50) should be H X 1
         c_t = torch.zeros (1, self.hidden_size, dtype=torch.float,device=self.device)  # data x hiddenzsize (50) should be H X 1
@@ -186,7 +142,7 @@ class Sequence (nn.Module) :
             h_seq = []
             for j, input_t1 in enumerate (input_t.chunk (input_t.size (0), dim=0)) :
                 input_t1 = torch.squeeze (input_t1, 0)
-                input_t1 = torch.reshape (input_t1, (1, len (self.inputvar) * (self.nk) + 3+self.stshy))  #2 for grad of Q and grad of Ctar
+                input_t1 = torch.reshape (input_t1, (1, len (self.inputvar) * (self.nk) + 1+self.stshy))  #
                 if self.LSTM :
                     h_t, c_t = self.rnn1 (input_t1, (h_t, c_t))
                 else :
