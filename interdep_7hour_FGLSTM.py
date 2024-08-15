@@ -342,7 +342,7 @@ def allvar(training_set,var_list,tau,H,num_epochs,fr,inputvar,invar_list,learnin
 seq_length = 30
 num_classes = 1  # number of outputs
 
-fr=[0.5]
+fr=[0.5]  #[0.25,0.37,0.5,0.67,0.75] 
 num_epochs =40
 
 
