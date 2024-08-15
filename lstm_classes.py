@@ -9,16 +9,13 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
     A simple LSTM cell network for educational AI-summer purposes
     """
 
-    def __init__(self, input_length=256, hidden_length=256, output_length=1, stshy=0, device='cuda', mgate='regLSTM',cgate='no',fluxgate='no',grad='yes',inputvar=[]) :
+    def __init__(self, input_length=256, hidden_length=256, output_length=1, stshy=0, device='cuda', mgate='regLSTM',inputvar=[]) :
         super (LSTM_cell_flow_gate, self).__init__ ()
         self.input_length = input_length
         self.hidden_length = hidden_length
         self.output_length = output_length
         self.inputvar  = inputvar
         self.mgate = mgate
-        self.cgate = cgate
-        self.fluxgate = fluxgate
-        self.grad=grad
         self.device=device
         self.stshy=stshy
 
@@ -30,9 +27,7 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
         self.linear_gate_w2 = nn.Linear (self.input_length, self.hidden_length, bias=False).to (device)
         self.linear_gate_r2 = nn.Linear (self.hidden_length, self.hidden_length, bias=False).to (device)
         self.linear_gate_l2 = nn.Linear (self.hidden_length, self.hidden_length, bias=False).to (device)
-        self.linear_gate_d2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # dilution gate 1 because using only gradient
-        # self.linear_gate_c2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # target chemical gradient gate
-        # self.linear_gate_flux2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # target flux grad gate
+        self.linear_gate_d2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # dilution gate 
         self.sigmoid_gate = nn.Sigmoid ().to (device)
 
         self.linear_gate_w3 = nn.Linear (self.input_length, self.hidden_length, bias=False).to (device)
@@ -47,13 +42,10 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
         self.activation_final = nn.Tanh ().to (device)
 
     def forget(self, x, h, c) :
-        if self.grad == 'no' :
-            idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
-            y = torch.take (x, torch.tensor (np.array (idx)).to(self.device))
-            y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
-            x1 = self.linear_gate_w1 (y)
-        else :
-            x1 = self.linear_gate_w1 (x)
+        idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
+        y = torch.take (x, torch.tensor (np.array (idx)).to(self.device))
+        y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
+        x1 = self.linear_gate_w1 (y)
 
         h1 = self.linear_gate_r1 (h)
         c1 = self.linear_gate_l1 (c)
@@ -62,7 +54,10 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
     def input_gate(self, x, h, c) :
         h_temp = self.linear_gate_r2 (h)
         c_temp = self.linear_gate_l2 (c)
-        x_temp = self.linear_gate_w2 (x)
+        idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
+        y = torch.take (x, torch.tensor(np.array (idx)).to(self.device))
+        y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
+        x_temp = self.linear_gate_w2 (y)
 
         if self.mgate == 'regLSTM':
             return self.sigmoid_gate (x_temp + h_temp + c_temp)
@@ -74,13 +69,10 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
             return icr
 
     def cell_memory_gate(self, i, f, x, h, c_prev) :
-        if self.grad == 'no' :
-            idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
-            y = torch.take (x, torch.tensor (np.array (idx)).to(self.device))
-            y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
-            x1 = self.linear_gate_w3 (y)
-        else :
-            x1 = self.linear_gate_w3 (x)
+        idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
+        y = torch.take (x, torch.tensor (np.array (idx)).to(self.device))
+        y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
+        x1 = self.linear_gate_w3 (y)
 
         h1 = self.linear_gate_r3 (h)
         k = self.activation_gate (x1 + h1)
@@ -91,13 +83,11 @@ class LSTM_cell_flow_gate (torch.nn.Module) :
         return c_next
 
     def out_gate(self, x, h, c) :
-        if self.grad == 'no' :
-            idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
-            y = torch.take (x, torch.tensor (np.array (idx)).to(self.device))
-            y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
-            x1 = self.linear_gate_w4 (y)
-        else :
-            x1 = self.linear_gate_w4 (x)
+        idx = np.arange (0, len (self.inputvar)+self.stshy, 1)
+        y = torch.take (x, torch.tensor (np.array (idx)).to(self.device))
+        y = torch.reshape (y, (1, len (self.inputvar)+self.stshy))
+        x1 = self.linear_gate_w4 (y)
+
         h1 = self.linear_gate_r4 (h)
         c1 = self.linear_gate_l4 (c)
         return self.sigmoid_hidden_out (x1 + h1 + c1)
@@ -135,8 +125,8 @@ class Sequence (nn.Module) :
 
     def forward(self, input, future=0) :  
         outputs = torch.ones (1, self.num_classes, device=self.device)  # number of class is input var
-        h_t = torch.zeros (1, self.hidden_size, dtype=torch.float,device=self.device)  # data x hiddenzsize (50) should be H X 1
-        c_t = torch.zeros (1, self.hidden_size, dtype=torch.float,device=self.device)  # data x hiddenzsize (50) should be H X 1
+        h_t = torch.zeros (1, self.hidden_size, dtype=torch.float,device=self.device)  # data x hiddenzsize should be H X 1
+        c_t = torch.zeros (1, self.hidden_size, dtype=torch.float,device=self.device)  # data x hiddenzsize should be H X 1
         for i, input_t in enumerate (input.chunk (input.size (0), dim=0)) :  # should be var x seq_length
             input_t = torch.squeeze (input_t, 0)
             h_seq = []
