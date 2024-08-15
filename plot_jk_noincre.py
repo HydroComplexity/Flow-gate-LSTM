@@ -29,9 +29,6 @@ no=0  #folder number
 tau=1
 method=['regLSTM','mLSTM(tanh)']
 methodid=1
-gates=['yes','no']
-cgateid=1
-fluxgateid=0
 ind=0
 
 
