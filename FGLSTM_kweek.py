@@ -25,7 +25,8 @@ else:
 
 
 
-def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,invar_list,learning_rate,header,seq_length,num_classes,device,grad,mgate,cgate,fluxgate,week,fold):
+# def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,invar_list,learning_rate,header,seq_length,num_classes,device,grad,mgate,cgate,fluxgate,week,fold):
+def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,invar_list,learning_rate,header,seq_length,num_classes,device,mgate,week,fold):
     #training set and training set1 are the disctionary contains target+input var and target var list
 
     print('fraction='+str(fr))
@@ -46,11 +47,12 @@ def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,inva
     training_seti={}
     for j in range (len (var_list)) :
         training_seti[var_list[j]]=training_set[var_list[j]][1:,:]
-        flux=training_set[var_list[j]][:,len(inputvar[j])]*training_set[var_list[j]][:,1]  #tar var is at the position len(iputvar)
+        # flux=training_set[var_list[j]][:,len(inputvar[j])]*training_set[var_list[j]][:,1]  #tar var is at the position len(iputvar)
         slp=utils_fg.getgrad(training_set[var_list[j]][:,1])   #Q is at the position 1
-        slp1=utils_fg.getgrad(training_set[var_list[j]][:,len(inputvar[j])] )  #tar var is at the position len(iputvar) #cgate gradient
-        slp2=utils_fg.getgrad(flux)   #flux gradient
-        training_seti[var_list[j]]=np.hstack((training_seti[var_list[j]],slp.reshape((len(slp),1)),slp1.reshape((len(slp1),1)),slp2.reshape((len(slp2),1))))
+        # slp1=utils_fg.getgrad(training_set[var_list[j]][:,len(inputvar[j])] )  #tar var is at the position len(iputvar) #cgate gradient
+        # slp2=utils_fg.getgrad(flux)   #flux gradient
+        # training_seti[var_list[j]]=np.hstack((training_seti[var_list[j]],slp.reshape((len(slp),1)),slp1.reshape((len(slp1),1)),slp2.reshape((len(slp2),1))))
+        training_seti[var_list[j]]=np.hstack((training_seti[var_list[j]],slp.reshape((len(slp),1))))
 
     training_set=training_seti
 
@@ -64,15 +66,18 @@ def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,inva
     nk = tau
     input_size1,diffvar1={},{}
     for i in range(len(var_list)):
-        input_size1[var_list[i]] = len (inputvar[i]) * (nk)+1  # number of inputs nk+1
-        diffvar1[var_list[i]] = len (inputvar[i]) * (nk)+1   #nk+1
+        # input_size1[var_list[i]] = len (inputvar[i]) * (nk)+1  # number of inputs nk+1
+        # diffvar1[var_list[i]] = len (inputvar[i]) * (nk)+1   #nk+1
+        input_size1[var_list[i]] = len (inputvar[i]) +1  
+        diffvar1[var_list[i]] = len (inputvar[i]) +1   
 
     input_size={}
     for i in range (len (var_list)) :
-        if grad == 'no' :
-            input_size[var_list[i]] = len (inputvar[i]) * (nk)  # number of inputs
-        else :
-            input_size[var_list[i]] = len (inputvar[i]) * (nk) + 1  # number of inputs
+        # if grad == 'no' :
+        #     input_size[var_list[i]] = len (inputvar[i]) * (nk)  # number of inputs
+        # else :
+        # input_size[var_list[i]] = len (inputvar[i]) * (nk) + 1  # number of inputs
+        input_size[var_list[i]] = len (inputvar[i]) + 1  # number of inputs
 
     for hidden_size in tqdm(H):
         print ('**************************************')
@@ -112,7 +117,7 @@ def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,inva
                 seq,optimizer={},{}
                 criterion = nn.MSELoss().to (device)
                 for i in range(len(var_list)):
-                    seq[var_list[i]] = Sequence(input_size[var_list[i]], hidden_size, seq_length, num_classes, mgate,cgate,fluxgate,grad, inputvar[i], nk, LSTM=True,custom=True, device=device,stshy=0,).to (device)
+                    seq[var_list[i]] = Sequence(input_size[var_list[i]], hidden_size, seq_length, num_classes, mgate, inputvar[i], nk, LSTM=True,custom=True, device=device,stshy=0,).to (device)
                     seq[var_list[i]].float()
                     optimizer[var_list[i]] = optim.Adam (seq[var_list[i]].parameters (), lr=learning_rate)
 
@@ -287,10 +292,10 @@ if __name__=='__main__':
 
     method=['regLSTM','mLSTM(tanh)']
     mt=1 #method index
-    grad=['yes','no']
-    gr=1 #add gradient of solutes in the LSTM acheitecture
-    fluxgateid = 1 #fluxgate id 1==NO, 0==YES
-    cgateid = 1 #all input SOLUTE gradients gate id 1==NO, 0==YES
+    # grad=['yes','no']
+    # gr=1 #add gradient of solutes in the LSTM acheitecture
+    # fluxgateid = 1 #fluxgate id 1==NO, 0==YES
+    # cgateid = 1 #all input SOLUTE gradients gate id 1==NO, 0==YES
 
     H=[32,45,50,55,60,64,68,70,73,75,78,80,83,85,87,90,93,95,98,100,105,110,115,120,125,128] #hidden layer size
 
@@ -316,4 +321,5 @@ if __name__=='__main__':
         r=utils_fg.dataretrive(varsup[i], inputvarsup[i],num_classes)
         u[var_listsup[i]], v[var_listsup[i]] = r, r[:,0]
 
-    process1 = allvar(u, v, var_listsup, num_classes, H, num_epochs, fr[0], inputvarsup, invar_listsup, lr, header, seq_length, num_classes,device, grad[gr], method[mt],grad[cgateid],grad[fluxgateid], week[0], folder)
+    # process1 = allvar(u, v, var_listsup, num_classes, H, num_epochs, fr[0], inputvarsup, invar_listsup, lr, header, seq_length, num_classes,device, grad[gr], method[mt],grad[cgateid],grad[fluxgateid], week[0], folder)
+    process1 = allvar(u, v, var_listsup, num_classes, H, num_epochs, fr[0], inputvarsup, invar_listsup, lr, header, seq_length, num_classes,device, method[mt], week[0], folder)
