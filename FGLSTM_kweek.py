@@ -141,7 +141,7 @@ def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,inva
                     future = 0
                     x2, y2 = utils_fg.sliding_windows (testn[var_list[o]][:, :],seq_length)  # train data is normalized data
                     x3[var_list[o]]=x2[0,:,:]
-                    x3[var_list[o]] = x3[var_list[o]].reshape ((1, seq_length, len (inputvar[o]) * (nk)+3))  # (nk+1)
+                    x3[var_list[o]] = x3[var_list[o]].reshape ((1, seq_length, len (inputvar[o]) * (nk)+1))  # 
                     testX3 = torch.Tensor (x3[var_list[o]]).to(device)
                     pred1 = seq[var_list[o]](testX3, future=future)
                     pred[var_list[o]] = np.ones ((len (test_target[var_list[0]]), 1))
@@ -154,7 +154,7 @@ def allvar(training_set,training_set1,var_list,tau,H,num_epochs,fr,inputvar,inva
                             x3[var_list[o]][0,-1,k+1]=pred[invar_list[o][k+1]][i]
 
                         x3[var_list[o]][0, -1, len(invar_list[o])] = predicGQ[i]
-                        x3[var_list[o]] = x3[var_list[o]].reshape ((1, seq_length, len (inputvar[o]) * (nk)+3))  # (nk+1)
+                        x3[var_list[o]] = x3[var_list[o]].reshape ((1, seq_length, len (inputvar[o]) * (nk)+1))  # 
                         testX3 = torch.Tensor (x3[var_list[o]]).to(device)
                         pred1 = seq[var_list[o]](testX3, future=future)
                         pred[var_list[o]][i + 1] = pred1.detach().cpu().numpy()
