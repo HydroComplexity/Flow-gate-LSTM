@@ -89,9 +89,6 @@ def allvar(training_set,var_list,tau,H,num_epochs,fr,inputvar,invar_list,learnin
                 self.linear_gate_r2 = nn.Linear (self.hidden_length, self.hidden_length, bias=False).to(device)
                 self.linear_gate_l2 = nn.Linear (self.hidden_length, self.hidden_length, bias=False).to(device)
                 self.linear_gate_d2 = nn.Linear (1, self.hidden_length, bias=False).to (device)    #dilution gate 1 because using only gradient
-                # self.linear_gate_d3 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # dilution gate 1 because using only gradient
-                self.linear_gate_flux2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # flux gate
-                self.linear_gate_c2 = nn.Linear (1, self.hidden_length, bias=False).to (device)  # solute gate
                 self.sigmoid_gate = nn.Sigmoid ().to(device)
                     # cell memory components
                 self.linear_gate_w3 = nn.Linear (self.input_length, self.hidden_length, bias=False).to(device)
